@@ -1,0 +1,38 @@
+name: Sync MGUTU Schedule
+
+on:
+  schedule:
+    # Запуск каждый день в 03:00 по UTC (06:00 по МСК)
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Позволяет запускать вручную кнопкой
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run script
+        env:
+          MGUTU_LOGIN: ${{ secrets.MGUTU_LOGIN }}
+          MGUTU_PASSWORD: ${{ secrets.MGUTU_PASSWORD }}
+        run: python sync.py
+
+      - name: Commit and push schedule
+        run: |
+          git config --global user.name "GitHub Action Bot"
+          git config --global user.email "action@github.com"
+          git add schedule.ics
+          git diff --staged --quiet || (git commit -m "Auto-update schedule [skip ci]" && git push)
