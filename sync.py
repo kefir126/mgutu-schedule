@@ -10,42 +10,36 @@ session = requests.Session()
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/json, text/plain, */*",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+    "Referer": "https://dec.mgutm.ru/"
 }
 
-# 1. Авторизация через tokenauth
+# 1. Авторизация
 login_url = "https://dec.mgutm.ru/api/tokenauth"
-
-# Пробуем передать данные (в MMIS обычно поля называются username или login)
 payload = {
     "username": LOGIN,
     "password": PASSWORD
 }
 
-print("Пытаемся авторизоваться через tokenauth...")
+print("Авторизуемся...")
 res = session.post(login_url, json=payload, headers=headers)
+resp_json = res.json()
 
-# Если вернуло ошибку, пробуем альтернативное имя поля ("login")
-if res.status_code != 200 or "token" not in res.text.lower():
-    payload = {"login": LOGIN, "password": PASSWORD}
-    res = session.post(login_url, json=payload, headers=headers)
-
-print(f"Статус авторизации: {res.status_code}")
-print(f"Ответ сервера: {res.text[:300]}")
-
-# Пытаемся извлечь токен, если сервер отдает его в JSON
-token = None
+# Извлекаем токен из глубины ответа
 try:
-    data = res.json()
-    if isinstance(data, dict):
-        token = data.get("token") or data.get("data") or data.get("accessToken")
-except Exception:
-    pass
+    token_data = resp_json["data"]["data"]
+    access_token = token_data["accessToken"]
+    user_name = token_data.get("userName", "Студент")
+    print(f"Токен успешно получен для пользователя: {user_name}")
+except Exception as e:
+    print(f"Ошибка извлечения токена: {e}")
+    print("Ответ сервера:", resp_json)
+    exit(1)
 
-# Если токен найден, подставляем его в заголовок Authorization
-if token and isinstance(token, str):
-    print("Токен успешно получен!")
-    headers["Authorization"] = f"Bearer {token}"
+# Передаем токен и в Authorization, и в Cookies (для надежности)
+headers["Authorization"] = f"Bearer {access_token}"
+session.cookies.set("accessToken", access_token)
+session.cookies.set("token", access_token)
 
 # 2. Скачивание календаря
 calendar_url = f"https://dec.mgutm.ru/api/Rasp?idStudent={STUDENT_ID}&iCal=true"
@@ -59,5 +53,5 @@ if "BEGIN:VCALENDAR" in calendar_response.text:
 else:
     print("Ошибка: календарь всё еще не получен.")
     print("Статус:", calendar_response.status_code)
-    print("Текст ответа:", calendar_response.text[:200])
+    print("Текст ответа:", calendar_response.text[:300])
     exit(1)
