@@ -3,7 +3,7 @@ name: Sync MGUTU Schedule
 on:
   schedule:
     # Запуск каждый день в 03:00 по UTC (06:00 по МСК)
-    - cron: '0 3 * * *'
+    - cron: '0 6,10,15 * * *'
   workflow_dispatch: # Позволяет запускать вручную кнопкой
 
 jobs:
